@@ -40,4 +40,63 @@ describe('Producer > groupMessagesPerPartition', () => {
       groupMessagesPerPartition({ topic, partitionMetadata: [], messages, partitioner })
     ).toEqual({})
   })
+
+  test('returns empty when called with no messages', () => {
+    expect(
+      groupMessagesPerPartition({ topic, partitionMetadata, messages: [], partitioner })
+    ).toEqual({})
+  })
+
+  test('reuses the messages array when every message has the same partitionNumber', () => {
+    const flowEventMessages = [
+      { value: 'a', partitionNumber: 2 },
+      { value: 'b', partitionNumber: 2 },
+      { value: 'c', partitionNumber: 2 },
+    ]
+    const explicitPartitioner = jest.fn()
+
+    const result = groupMessagesPerPartition({
+      topic,
+      partitionMetadata,
+      messages: flowEventMessages,
+      partitioner: explicitPartitioner,
+    })
+
+    expect(result).toEqual({ 2: flowEventMessages })
+    expect(result[2]).toBe(flowEventMessages)
+    expect(explicitPartitioner).not.toHaveBeenCalled()
+  })
+
+  test('reuses the messages array when every message has the same partition', () => {
+    const explicitPartitionMessages = [
+      { key: 'a', partition: 1 },
+      { key: 'b', partition: 1 },
+    ]
+    const explicitPartitioner = jest.fn()
+
+    const result = groupMessagesPerPartition({
+      topic,
+      partitionMetadata,
+      messages: explicitPartitionMessages,
+      partitioner: explicitPartitioner,
+    })
+
+    expect(result).toEqual({ 1: explicitPartitionMessages })
+    expect(result[1]).toBe(explicitPartitionMessages)
+    expect(explicitPartitioner).not.toHaveBeenCalled()
+  })
+
+  test('groups a single message without copying the array', () => {
+    const singleMessage = [{ key: 'only' }]
+
+    const result = groupMessagesPerPartition({
+      topic,
+      partitionMetadata,
+      messages: singleMessage,
+      partitioner,
+    })
+
+    expect(result).toEqual({ 0: singleMessage })
+    expect(result[0]).toBe(singleMessage)
+  })
 })
