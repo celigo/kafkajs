@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.5] - 2026-05-23
+
+### Fixed
+  - Optimize `groupMessagesPerPartition` to avoid O(n²) array copies when grouping producer messages #4
+  - Fast-path single-partition batches when all messages share the same `partitionNumber` or `partition` (e.g. Celigo `flow_events` via `sendFlowEvents`)
+
 ## [2.2.4] - 2023-02-27
 
 ### Added
