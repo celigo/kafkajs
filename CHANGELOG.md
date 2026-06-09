@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2026-06-09
+
+### Added
+  - Add CooperativeStickyAssigner (KIP-429) for incremental cooperative rebalance, reducing partition churn during broker maintenance #IO-184967
+  - Prior assignments propagated via userData in MemberMetadata for true sticky retention across rebalances
+  - Available as `PartitionAssigners.cooperativeSticky` alongside existing `roundRobin`
+
 ## [2.2.5] - 2026-05-23
 
 ### Fixed
