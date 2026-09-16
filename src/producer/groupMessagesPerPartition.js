@@ -35,7 +35,14 @@ module.exports = ({ topic, partitionMetadata, messages, partitioner }) => {
 
   const uniformPartition = getUniformExplicitPartition(messages)
   if (uniformPartition !== null) {
-    return { [uniformPartition]: messages }
+    // A uniform batch still consults the partitioner (once, with a
+    // representative message): explicit partition fields are hints, and the
+    // partitioner owns the final routing decision — e.g. single-partition
+    // shortcuts, allow-listed topics, or clamping to existing partitions.
+    // Returning the raw hint here would silently produce to partitions that
+    // may not exist on the topic.
+    const partition = partitioner({ topic, partitionMetadata, message: messages[0] })
+    return { [partition]: messages }
   }
 
   if (messages.length === 1) {

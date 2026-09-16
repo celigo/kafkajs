@@ -47,13 +47,13 @@ describe('Producer > groupMessagesPerPartition', () => {
     ).toEqual({})
   })
 
-  test('reuses the messages array when every message has the same partitionNumber', () => {
+  test('reuses the messages array and calls the partitioner once when every message has the same partitionNumber', () => {
     const flowEventMessages = [
       { value: 'a', partitionNumber: 2 },
       { value: 'b', partitionNumber: 2 },
       { value: 'c', partitionNumber: 2 },
     ]
-    const explicitPartitioner = jest.fn()
+    const explicitPartitioner = jest.fn(({ message }) => message.partitionNumber)
 
     const result = groupMessagesPerPartition({
       topic,
@@ -64,15 +64,20 @@ describe('Producer > groupMessagesPerPartition', () => {
 
     expect(result).toEqual({ 2: flowEventMessages })
     expect(result[2]).toBe(flowEventMessages)
-    expect(explicitPartitioner).not.toHaveBeenCalled()
+    expect(explicitPartitioner).toHaveBeenCalledTimes(1)
+    expect(explicitPartitioner).toHaveBeenCalledWith({
+      topic,
+      partitionMetadata,
+      message: flowEventMessages[0],
+    })
   })
 
-  test('reuses the messages array when every message has the same partition', () => {
+  test('reuses the messages array and calls the partitioner once when every message has the same partition', () => {
     const explicitPartitionMessages = [
       { key: 'a', partition: 1 },
       { key: 'b', partition: 1 },
     ]
-    const explicitPartitioner = jest.fn()
+    const explicitPartitioner = jest.fn(({ message }) => message.partition)
 
     const result = groupMessagesPerPartition({
       topic,
@@ -83,7 +88,33 @@ describe('Producer > groupMessagesPerPartition', () => {
 
     expect(result).toEqual({ 1: explicitPartitionMessages })
     expect(result[1]).toBe(explicitPartitionMessages)
-    expect(explicitPartitioner).not.toHaveBeenCalled()
+    expect(explicitPartitioner).toHaveBeenCalledTimes(1)
+  })
+
+  test('uniform batches do not bypass a partitioner that redirects out-of-range partition hints', () => {
+    // Regression: a topic with a single physical partition receiving a batch
+    // whose partitionNumber points past it. Custom partitioners (e.g. a
+    // single-partition shortcut) must stay authoritative — using the raw hint
+    // would produce to a partition that does not exist.
+    const singlePartitionMetadata = [{ partitionId: 0, leader: 0 }]
+    const outOfRangeMessages = [
+      { value: 'a', partitionNumber: 7 },
+      { value: 'b', partitionNumber: 7 },
+    ]
+    const singlePartitionShortcutPartitioner = jest.fn(({ partitionMetadata: metadata, message }) =>
+      metadata.length === 1 ? metadata[0].partitionId : message.partitionNumber
+    )
+
+    const result = groupMessagesPerPartition({
+      topic,
+      partitionMetadata: singlePartitionMetadata,
+      messages: outOfRangeMessages,
+      partitioner: singlePartitionShortcutPartitioner,
+    })
+
+    expect(result).toEqual({ 0: outOfRangeMessages })
+    expect(result[7]).toBeUndefined()
+    expect(singlePartitionShortcutPartitioner).toHaveBeenCalledTimes(1)
   })
 
   test('groups a single message without copying the array', () => {

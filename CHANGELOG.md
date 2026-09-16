@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2026-09-06
+
+### Fixed
+  - Uniform-partition batches no longer bypass the partitioner: the fast path introduced in 2.2.5 returned the raw `partitionNumber`/`partition` hint directly, so custom partitioner rules (single-partition shortcut, allow-listed topics) were skipped and batches could silently target partitions that do not exist on the topic. The fast path now calls the partitioner once with a representative message and buckets the whole batch on its result — same single-call performance, partitioner stays authoritative. Found via error-management CI: `needs_notification` produce/consume round-trips timed out with silent non-delivery (IO-203881).
+
 ## [2.2.5] - 2026-05-23
 
 ### Fixed
